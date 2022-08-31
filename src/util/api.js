@@ -50,7 +50,9 @@ export const apiGetPaginatedWidgetInstances = page_number => {
 			return resp.json()
 		})
 		.then(resp => {
-			resp.sort(_compareWidgets)
+			// resp.sort(_compareWidgets)
+			console.log(resp)
+			resp['pagination'].sort(_compareWidgets)
 			writeToStorage('widgets', resp)
 			return resp
 		})
@@ -457,3 +459,11 @@ export const readFromStorage = () => {
 		}
 	}, [])
 }
+
+
+// Returns boolean, true if the current user can publish the given widget instance, false otherwise
+export const apiCanBePublishedByCurrentUser = (widgetId) => {
+	return fetch('/api/json/widget_publish_perms_verify', fetchOptions({ body: `data=${formatFetchBody([widgetId])}` }))
+		.then(resp => resp.json())
+}
+

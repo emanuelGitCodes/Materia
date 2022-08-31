@@ -47,14 +47,27 @@ const MyWidgetsPage = () => {
 	const deleteWidget = useDeleteWidget()
 	readFromStorage()
 
-	const [page, setPage] = useState(2)
-	const { data: widgets, isLoading, isFetching, isPreviousData } = useQuery({
-		queryKey: 'widgets',
-		// queryFn: apiGetWidgetInstances,
-		queryFn: () => apiGetPaginatedWidgetInstances(page),
-		staleTime: Infinity,
-		keepPreviousData: true
-	})
+
+	const [page, setPage] = useState(1)
+	// const { data: widgets, isLoading, isFetching, isPreviousData } = useQuery({
+	// 	queryKey: 'widgets',
+	// 	// queryFn: apiGetWidgetInstances,
+	// 	queryFn: () => apiGetPaginatedWidgetInstances(page),
+	// 	staleTime: Infinity,
+	// 	keepPreviousData: true
+	// })
+
+	const {
+		data,
+		refetch,
+		isLoading,
+		isSuccess,
+		isFetching,
+		isPreviousData,
+	} = useQuery('widgets', () => apiGetPaginatedWidgetInstances(page), { keepPreviousData: true })
+
+	console.log(data)
+	console.log(page)
 
 	const { data: user } = useQuery({
 		queryKey: 'user',
@@ -95,15 +108,17 @@ const MyWidgetsPage = () => {
 	// isFetching - actual data, from API
 	useEffect(() => {
 		if (!isFetching) {
-			checkPreselectedWidgetAccess(widgets)
+			if (data?.total_num_pages > page) { setPage(page + 1) }
+			checkPreselectedWidgetAccess(data?.pagination)
 		}
 	}, [isFetching])
 
 	useEffect(() => {
 		if (state.postFetch) {
-			checkPreselectedWidgetAccess(widgets)
+			checkPreselectedWidgetAccess(data?.pagination)
+			if (data?.total_num_pages != page) { refetch }
 		}
-	}, [widgets])
+	}, [data])
 
 	// If a widget ID was provided in the URL or a widget was selected from the sidebar before the API finished
 	//  fetching, double-check that the current user actually has access to it
@@ -192,16 +207,16 @@ const MyWidgetsPage = () => {
 	const beards = useMemo(
 		() => {
 			const result = []
-			widgets?.forEach(() => {
+			data?.pagination?.forEach(() => {
 				result.push(randomBeard())
 			})
 			return result
 		},
-		[widgets]
+		[data]
 	)
 
 	let widgetCatalogCalloutRender = null
-	if (!isFetching && (!widgets || widgets?.length === 0)) {
+	if (!isFetching && (!data || data?.pagination?.length === 0)) {
 		widgetCatalogCalloutRender = (
 			<div className='qtip top nowidgets'>
 				Click here to start making a new widget!
@@ -240,7 +255,7 @@ const MyWidgetsPage = () => {
 			</section>
 		}
 
-		if (widgets?.length < 1) {
+		if (data?.pagination?.length < 1) {
 			return <section className='directions no-widgets'>
 				<h1>You have no widgets!</h1>
 				<p>Make a new widget in the widget catalog.</p>
@@ -283,7 +298,7 @@ const MyWidgetsPage = () => {
 					<MyWidgetsSideBar
 						key='widget-side-bar'
 						isLoading={isLoading}
-						instances={widgets}
+						instances={data?.pagination}
 						selectedId={state.selectedInst ? state.selectedInst.id : null}
 						onClick={onSelect}
 						beardMode={beardMode}
