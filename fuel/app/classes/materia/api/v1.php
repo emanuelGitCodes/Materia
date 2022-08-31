@@ -21,8 +21,13 @@ Available Verbs:
 */
 
 namespace Materia;
+
+use Fuel\Core\DB;
+use Fuel\Core\Log;
+use Fuel\Core\Pagination;
 use \Materia\Msg;
 use \Materia\Util_Validator;
+
 
 class Api_V1
 {
@@ -54,6 +59,12 @@ class Api_V1
 		// get specific instances - no log in required
 		if ( ! is_array($inst_ids)) $inst_ids = [$inst_ids]; // convert string into array of items
 		return Widget_Instance_Manager::get_all($inst_ids, false, false, $deleted);
+	}
+
+	static public function widget_paginate_instances_get( $page_number = 1)
+	{
+		if (\Service_User::verify_session() !== true) return []; // shortcut to returning noting
+		return Widget_Instance_Manager::get_paginated_for_user(\Model_User::find_current_id(), $page_number);
 	}
 
 	/**

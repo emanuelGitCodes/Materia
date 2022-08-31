@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useQuery } from 'react-query'
-import { apiGetWidgetInstances, apiGetUser, readFromStorage, apiGetUserPermsForInstance } from '../util/api'
+import { apiGetWidgetInstances, apiGetPaginatedWidgetInstances, apiGetUser, readFromStorage, apiGetUserPermsForInstance } from '../util/api'
 import rawPermsToObj from '../util/raw-perms-to-object'
 import Header from './header'
 import MyWidgetsSideBar from './my-widgets-side-bar'
@@ -25,7 +25,7 @@ const randomBeard = () => {
 }
 
 const initState = () => {
-	return({
+	return ({
 		selectedInst: null,
 		otherUserPerms: null,
 		myPerms: null,
@@ -46,17 +46,22 @@ const MyWidgetsPage = () => {
 	const copyWidget = useCopyWidget()
 	const deleteWidget = useDeleteWidget()
 	readFromStorage()
-	const { data: widgets, isLoading, isFetching } = useQuery({
+
+	const [page, setPage] = useState(2)
+	const { data: widgets, isLoading, isFetching, isPreviousData } = useQuery({
 		queryKey: 'widgets',
-		queryFn: apiGetWidgetInstances,
-		staleTime: Infinity
+		// queryFn: apiGetWidgetInstances,
+		queryFn: () => apiGetPaginatedWidgetInstances(page),
+		staleTime: Infinity,
+		keepPreviousData: true
 	})
-	const { data: user} = useQuery({
+
+	const { data: user } = useQuery({
 		queryKey: 'user',
 		queryFn: apiGetUser,
 		staleTime: Infinity
 	})
-	const { data: permUsers} = useQuery({
+	const { data: permUsers } = useQuery({
 		queryKey: ['user-perms', state.selectedInst?.id],
 		queryFn: () => apiGetUserPermsForInstance(state.selectedInst?.id),
 		enabled: !!state.selectedInst && !!state.selectedInst.id && state.selectedInst?.id !== undefined,
@@ -75,14 +80,14 @@ const MyWidgetsPage = () => {
 		if (state.selectedInst && permUsers) {
 			const isEditable = state.selectedInst.widget.is_editable === "1"
 			const othersPerms = new Map()
-			for(const i in permUsers.widget_user_perms){
+			for (const i in permUsers.widget_user_perms) {
 				othersPerms.set(i, rawPermsToObj(permUsers.widget_user_perms[i], isEditable))
 			}
 			let _myPerms
-			for(const i in permUsers.user_perms){
+			for (const i in permUsers.user_perms) {
 				_myPerms = rawPermsToObj(permUsers.user_perms[i], isEditable)
 			}
-			setState({...state, otherUserPerms: othersPerms, myPerms: _myPerms})
+			setState({ ...state, otherUserPerms: othersPerms, myPerms: _myPerms })
 		}
 	}, [state.selectedInst, JSON.stringify(permUsers)])
 
@@ -123,29 +128,29 @@ const MyWidgetsPage = () => {
 				}
 			}
 			// always set loading to false and noAccess to whether we found a matching instance or not
-			const newState = {...state, loading: false, noAccess: !widgetFound, postFetch: false}
+			const newState = { ...state, loading: false, noAccess: !widgetFound, postFetch: false }
 
 			// if we didn't find a matching instance for either case, make sure there isn't a selected instance
-			if ( !widgetFound) newState.selectedInst = null
+			if (!widgetFound) newState.selectedInst = null
 			setState(newState)
 		} else if (state.postFetch) {
 			// We're updating the selected widget following a post-fetch change - probably a delete
 			// With no given instance ID to select, just select the topmost one in the list
 			return onSelect(widgets[0], 0)
 		}
-		else setState({...state, loading: false, postFetch: false})
+		else setState({ ...state, loading: false, postFetch: false })
 	}
 
 	const onSelect = (inst, index) => {
 		if (inst.is_fake) return
 
-		setState({...state, selectedInst: inst, noAccess: false, currentBeard: beards[index], postFetch: false})
+		setState({ ...state, selectedInst: inst, noAccess: false, currentBeard: beards[index], postFetch: false })
 		setUrl(inst)
 	}
 
 	const onCopy = (instId, newTitle, newPerm, inst) => {
-		setState({...state, selectedInst: null})
-
+		setState({ ...state, selectedInst: null })
+		console.log(inst.widget)
 		copyWidget.mutate(
 			{
 				instId: instId,
@@ -158,14 +163,14 @@ const MyWidgetsPage = () => {
 				// Still waiting on the widget list to refresh, return to a 'loading' state and indicate a post-fetch change is coming.
 				onSettled: newInstId => {
 					// Setting selectedInst to null again to avoid race conditions.
-					setState({...state, selectedInst: null, widgetHash: newInstId, postFetch: true, loading: true})
+					setState({ ...state, selectedInst: null, widgetHash: newInstId, postFetch: true, loading: true })
 				}
 			}
 		)
 	}
 
 	const onDelete = inst => {
-		setState({...state, selectedInst: null, widgetHash: null})
+		setState({ ...state, selectedInst: null, widgetHash: null })
 
 		deleteWidget.mutate(
 			{
@@ -175,7 +180,7 @@ const MyWidgetsPage = () => {
 				// Still waiting on the widget list to refresh, return to a 'loading' state and indicate a post-fetch change is coming.
 				onSettled: () => {
 					// Setting selectedInst and widgetHash to null again to avoid race conditions.
-					setState({...state, selectedInst: null, widgetHash: null, postFetch: true, loading: true})
+					setState({ ...state, selectedInst: null, widgetHash: null, postFetch: true, loading: true })
 				}
 			}
 		)
@@ -209,7 +214,7 @@ const MyWidgetsPage = () => {
 		if (isLoading) {
 			return <section className='directions no-widgets'>
 				<h1 className='loading-text'>Loading</h1>
-				<LoadingIcon size='lrg'/>
+				<LoadingIcon size='lrg' />
 			</section>
 		}
 
@@ -249,7 +254,7 @@ const MyWidgetsPage = () => {
 			</section>
 		}
 
-		if ( state.selectedInst) {
+		if (state.selectedInst) {
 			return <MyWidgetSelectedInstance
 				inst={state.selectedInst}
 				onDelete={onDelete}
@@ -257,7 +262,7 @@ const MyWidgetsPage = () => {
 				currentUser={user}
 				myPerms={state.myPerms}
 				otherUserPerms={state.otherUserPerms}
-				setOtherUserPerms={(p) => setState({...state, otherUserPerms: p})}
+				setOtherUserPerms={(p) => setState({ ...state, otherUserPerms: p })}
 				beardMode={beardMode}
 				beard={state.currentBeard}
 			/>
@@ -269,7 +274,7 @@ const MyWidgetsPage = () => {
 			<Header />
 			<div className='my_widgets'>
 
-				{ widgetCatalogCalloutRender }
+				{widgetCatalogCalloutRender}
 
 				<div className='container'>
 					<div>

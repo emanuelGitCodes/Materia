@@ -43,6 +43,19 @@ export const apiGetWidgetInstances = () => {
 		})
 }
 
+export const apiGetPaginatedWidgetInstances = page_number => {
+	return fetch(`/api/json/widget_paginate_instances_get/${page_number}`)
+		.then(resp => {
+			if (resp.status === 204 || resp.status === 502) return []
+			return resp.json()
+		})
+		.then(resp => {
+			resp.sort(_compareWidgets)
+			writeToStorage('widgets', resp)
+			return resp
+		})
+}
+
 export const apiGetInstancesForUser = userId => {
 	return fetch(`/api/admin/user/${userId}`)
 		.then(resp => {
@@ -153,7 +166,7 @@ export const apiGetUsers = arrayOfUserIds => {
 		})
 }
 
-export const apiGetUserActivity = ({pageParam = 0}) => {
+export const apiGetUserActivity = ({ pageParam = 0 }) => {
 	return fetch(`/api/user/activity?start=${pageParam * 6}`)
 		.then(resp => {
 			if (resp.status === 204 || resp.status === 502) return []
@@ -273,7 +286,7 @@ export const apiUpdateWidget = ({ args }) => {
 
 export const apiSearchWidgets = input => {
 	let pattern = /[A-Za-z]+/g
-	if ( !input.match(pattern).length) return false
+	if (!input.match(pattern).length) return false
 	return fetch(`/api/admin/widget_search/${input}`)
 		.then(resp => {
 			if (resp.status === 204 || resp.status === 502) return []
