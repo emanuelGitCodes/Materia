@@ -23,16 +23,20 @@ const QuestionHistory = () => {
   useEffect(() => {
     if (qsetHistory && qsetHistory.type != 'error')
     {
-      qsetHistory.map((qset) => {
+      const historyList = qsetHistory
+      .sort((a ,b) => b.created_at - a.created_at)
+      .map((qset) => {
+        const date = new Date(parseInt(qset.created_at) * 1000)
         return {
 					id: qset.id,
 					data: qset.data,
 					version: qset.version,
 					count: readQuestionCount(qset.data),
-					created_at: new Date(parseInt(qset.created_at) * 1000).toLocaleString(),
+					created_at: date.toLocaleString(),
+          date: date.getMonth() + 1 + '/' + date.getDate() + '/' + date.getFullYear()
 				}
       })
-      setSaves(qsetHistory)
+      setSaves(historyList)
     }
   }, [qsetHistory])
 
@@ -69,7 +73,7 @@ const QuestionHistory = () => {
       return (
         <tr onClick={() => loadSaveData(save.id)} key={index}>
           <td>Save #{saves.length - index}</td>
-          <td>{save.created_at}</td>
+          <td>{save.date}</td>
         </tr>
       )
     })
